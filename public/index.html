@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Autonomous Digital Holdings — AI-Built Tools & Services</title>
+  <style>
+    :root { --bg: #070b14; --card: #0f172a; --border: #1e293b; --cyan: #38bdf8; --emerald: #10b981; --text: #f1f5f9; --muted: #94a3b8; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+    header { padding: 48px 20px 32px; text-align: center; border-bottom: 1px solid var(--border); background: radial-gradient(circle at top, #0f2942 0%, var(--bg) 70%); }
+    .badge { display: inline-block; padding: 4px 12px; border: 1px solid var(--cyan); color: var(--cyan); border-radius: 999px; font-size: 12px; letter-spacing: 0.5px; }
+    h1 { margin: 14px 0 8px; font-size: 28px; }
+    .sub { color: var(--muted); max-width: 600px; margin: 0 auto 20px; font-size: 15px; }
+    .cta-bar { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .btn { padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 14px; text-decoration: none; display: inline-block; }
+    .btn-usd { background: var(--cyan); color: #04101d; }
+    .btn-idr { background: var(--emerald); color: #031911; }
+    .btn-dash { border: 1px solid var(--border); color: var(--muted); }
+    main { max-width: 1000px; margin: 32px auto; padding: 0 20px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
+    .sector { font-size: 11px; color: var(--cyan); text-transform: uppercase; font-weight: 700; }
+    .card h3 { margin: 8px 0; font-size: 18px; }
+    .card p { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
+    .card-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 12px; font-size: 13px; }
+    .open-link { color: var(--cyan); font-weight: 600; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="badge">100% AUTONOMOUS AI ENTERPRISE</span>
+    <h1>Solusi Digital, Utilitas & Layanan Otomatis</h1>
+    <p class="sub">Seluruh aplikasi web, audit teknis, dan produk digital di bawah ini diriset, dirancang, dan dibangun secara mandiri oleh sistem multi-agen AI.</p>
+    <div class="cta-bar">
+      <a href="https://maco24.gumroad.com" target="_blank" class="btn btn-usd">Global Store (USD) ↗</a>
+      <a href="https://lynk.id/r4scal" target="_blank" class="btn btn-idr">Toko Indonesia / QRIS (IDR) ↗</a>
+      <a href="/dashboard.html" class="btn btn-dash">Owner Command Center</a>
+    </div>
+  </header>
+
+  <main>
+    <h2 style="font-size:18px;margin-bottom:16px;">Produk & Layanan Aktif (<span id="count">0</span>)</h2>
+    <div id="catalog" class="grid"></div>
+  </main>
+
+  <script>
+    fetch('/state.json?t=' + Date.now())
+      .then(r => { if (!r.ok) throw new Error('Belum ada data'); return r.json(); })
+      .then(data => {
+        const list = (data.activeVentures || []).slice().reverse();
+        document.getElementById('count').textContent = list.length;
+        document.getElementById('catalog').innerHTML = list.map(item => `
+          <div class="card">
+            <div>
+              <div class="sector">${item.sector} • ${item.market}</div>
+              <h3>${item.title}</h3>
+              <p>${item.promo}</p>
+            </div>
+            <div class="card-footer">
+              <span><strong>${item.price}</strong></span>
+              <a href="${item.url}" class="open-link">Buka Layanan →</a>
+            </div>
+          </div>
+        `).join('') || '<p style="color:#94a3b8;">Menunggu siklus produksi AI pertama...</p>';
+      })
+      .catch(() => {
+        document.getElementById('catalog').innerHTML = '<p style="color:#94a3b8;">Sistem siap beroperasi. Menunggu siklus produksi pertama dari AI...</p>';
+      });
+  </script>
+</body>
+</html>
