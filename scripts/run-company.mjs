@@ -1,45 +1,91 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const PAYMENT_USD = process.env.PAYMENT_LINK_USD || ('https://' + 'maco24.gumroad.com');
-const PAYMENT_IDR = process.env.PAYMENT_LINK_IDR || ('https://' + 'lynk.id/r4scal');
+const GROQ_API_KEY = (process.env.GROQ_API_KEY || '').trim();
+const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || '').trim();
+const PAYMENT_USD = (process.env.PAYMENT_LINK_USD || 'https://maco24.gumroad.com').trim();
+const PAYMENT_IDR = (process.env.PAYMENT_LINK_IDR || 'https://lynk.id/r4scal').trim();
 const STATE_PATH = path.resolve('data/company-state.json');
 
-const GROQ_URL = 'https://' + 'api.groq.com/openai/v1/chat/completions';
-const GEMINI_BASE = 'https://' + 'generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GROQ_BASE = ['https:/', 'api.groq.com', 'openai', 'v1'].join('/');
+const GEMINI_BASE = ['https:/', 'generativelanguage.googleapis.com', 'v1beta'].join('/');
 
 function safeParseJson(text) {
   const cleaned = text.replace(/^```json\s*|^```\s*|```$/gm, '').trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start !== -1 && end !== -1) {
+    return JSON.parse(cleaned.slice(start, end + 1));
+  }
   return JSON.parse(cleaned);
 }
 
+async function getActiveGroqModel() {
+  const res = await fetch(`${GROQ_BASE}/models`, {
+    headers: { Authorization: `Bearer ${GROQ_API_KEY}` }
+  });
+  if (!res.ok) {
+    throw new Error(`Groq Models HTTP ${res.status}: ${await res.text()}`);
+  }
+  const data = await res.json();
+  const models = (data.data || [])
+    .map(m => m.id)
+    .filter(id => !/whisper|tts|guard|embed|vision|orpheus|playai/i.test(id));
+
+  const preferred = models.find(id => /llama-3\.3|llama-3\.1|qwen|gpt-oss|llama/i.test(id));
+  if (!preferred && models.length === 0) throw new Error('Model chat Groq tidak ditemukan');
+  return preferred || models[0];
+}
+
+async function getActiveGeminiModel() {
+  const res = await fetch(`${GEMINI_BASE}/models?key=${GEMINI_API_KEY}`);
+  if (!res.ok) {
+    throw new Error(`Gemini Models HTTP ${res.status}: ${await res.text()}`);
+  }
+  const data = await res.json();
+  const models = (data.models || [])
+    .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+    .map(m => m.name.replace(/^models\//, ''));
+
+  const preferred =
+    models.find(id => /flash/i.test(id)) ||
+    models.find(id => /gemini/i.test(id));
+  if (!preferred) throw new Error('Model Gemini tidak ditemukan');
+  return preferred;
+}
+
 async function callGroq(systemInstruction, userPrompt, expectJson) {
-  const res = await fetch(GROQ_URL, {
+  const model = await getActiveGroqModel();
+  console.log('Menggunakan model Groq aktif:', model);
+
+  const res = await fetch(`${GROQ_BASE}/chat/completions`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${GROQ_API_KEY}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+      model,
       messages: [
         { role: 'system', content: systemInstruction },
         { role: 'user', content: userPrompt }
       ],
-      temperature: 0.75,
+      temperature: 0.7,
       ...(expectJson ? { response_format: { type: 'json_object' } } : {})
     })
   });
-  if (!res.ok) throw new Error(`Groq HTTP ${res.status}`);
+  if (!res.ok) {
+    throw new Error(`Groq Chat HTTP ${res.status}: ${await res.text()}`);
+  }
   const data = await res.json();
   return data.choices[0].message.content;
 }
 
 async function callGemini(systemInstruction, userPrompt, expectJson) {
-  const url = `${GEMINI_BASE}?key=${GEMINI_API_KEY}`;
-  const res = await fetch(url, {
+  const model = await getActiveGeminiModel();
+  console.log('Menggunakan model Gemini aktif:', model);
+
+  const res = await fetch(`${GEMINI_BASE}/models/${model}:generateContent?key=${GEMINI_API_KEY}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -48,7 +94,9 @@ async function callGemini(systemInstruction, userPrompt, expectJson) {
       generationConfig: expectJson ? { responseMimeType: 'application/json' } : {}
     })
   });
-  if (!res.ok) throw new Error(`Gemini HTTP ${res.status}`);
+  if (!res.ok) {
+    throw new Error(`Gemini Generate HTTP ${res.status}: ${await res.text()}`);
+  }
   const data = await res.json();
   return data.candidates[0].content.parts[0].text;
 }
