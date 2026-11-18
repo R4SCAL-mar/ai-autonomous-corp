@@ -3,9 +3,12 @@ import path from 'node:path';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const PAYMENT_USD = process.env.PAYMENT_LINK_USD || 'https://maco24.gumroad.com';
-const PAYMENT_IDR = process.env.PAYMENT_LINK_IDR || 'https://lynk.id/r4scal';
+const PAYMENT_USD = process.env.PAYMENT_LINK_USD || ('https://' + 'maco24.gumroad.com');
+const PAYMENT_IDR = process.env.PAYMENT_LINK_IDR || ('https://' + 'lynk.id/r4scal');
 const STATE_PATH = path.resolve('data/company-state.json');
+
+const GROQ_URL = 'https://' + 'api.groq.com/openai/v1/chat/completions';
+const GEMINI_BASE = 'https://' + 'generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 function safeParseJson(text) {
   const cleaned = text.replace(/^```json\s*|^```\s*|```$/gm, '').trim();
@@ -13,7 +16,7 @@ function safeParseJson(text) {
 }
 
 async function callGroq(systemInstruction, userPrompt, expectJson) {
-  const res = await fetch('[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)', {
+  const res = await fetch(GROQ_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${GROQ_API_KEY}`,
@@ -35,7 +38,7 @@ async function callGroq(systemInstruction, userPrompt, expectJson) {
 }
 
 async function callGemini(systemInstruction, userPrompt, expectJson) {
-  const url = `[https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$](https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$){GEMINI_API_KEY}`;
+  const url = `${GEMINI_BASE}?key=${GEMINI_API_KEY}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
