@@ -1,0 +1,19 @@
+{
+  "companyName": "Autonomous Digital Holdings",
+  "lastUpdated": "2026-11-19T00:00:00Z",
+  "finance": {
+    "currency": "IDR",
+    "initialCapital": 0,
+    "highWaterMarkDate1": 0,
+    "totalNetWorth": 0,
+    "buckets": {
+      "safeYield": 0,
+      "assetExpansion": 0,
+      "quantTrading": 0,
+      "trafficArbitrage": 0
+    },
+    "isMonthEndLocked": false
+  },
+  "activeVentures": [],
+  "weeklyLogs": []
+}
