@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Owner Command Center — AI Enterprise</title>
+  <style>
+    :root { --bg: #070b14; --card: #0f172a; --border: #1e293b; --cyan: #38bdf8; --emerald: #10b981; --amber: #f59e0b; --text: #f1f5f9; --muted: #94a3b8; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; line-height: 1.5; }
+    .container { max-width: 980px; margin: auto; }
+    .top-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+    .status-pill { padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; background: rgba(16, 185, 129, 0.15); color: var(--emerald); border: 1px solid var(--emerald); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin: 20px 0; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .value { font-size: 22px; font-weight: 700; margin-top: 6px; color: var(--cyan); }
+    .safe { color: var(--emerald); }
+    .warn { color: var(--amber); }
+    h2 { font-size: 17px; margin: 28px 0 12px; color: var(--text); }
+    .item { background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--cyan); padding: 14px 16px; margin-bottom: 10px; border-radius: 8px; }
+    a { color: var(--cyan); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="top-bar">
+      <div>
+        <h1 style="margin:0;font-size:22px;">Owner Command Center</h1>
+        <div id="updated" class="label" style="margin-top:4px;">Menunggu sinkronisasi pertama...</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <span id="lockStatus" class="status-pill">STATUS: AKTIF</span>
+        <a href="/index.html" style="font-size:13px;color:var(--muted);">← Etalase Publik</a>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="label">Total Kekayaan (Net Worth)</div>
+        <div id="netWorth" class="value safe">Rp 0</div>
+      </div>
+      <div class="card">
+        <div class="label">Batas Aman Tgl 1 (High-Water)</div>
+        <div id="hwm" class="value">Rp 0</div>
+      </div>
+      <div class="card">
+        <div class="label">Safe Yield (40%)</div>
+        <div id="yield" class="value safe">Rp 0</div>
+      </div>
+      <div class="card">
+        <div class="label">Ekspansi Aset & AI (25%)</div>
+        <div id="expand" class="value">Rp 0</div>
+      </div>
+      <div class="card">
+        <div class="label">Quant Trading (20%)</div>
+        <div id="trade" class="value warn">Rp 0</div>
+      </div>
+      <div class="card">
+        <div class="label">Arbitrase Trafik (15%)</div>
+        <div id="traffic" class="value">Rp 0</div>
+      </div>
+    </div>
+
+    <h2>Lini Bisnis & Produk yang Diciptakan AI</h2>
+    <div id="ventures"></div>
+
+    <h2>Laporan Sekretaris & Mutasi Keuangan</h2>
+    <div id="logs"></div>
+  </div>
+
+  <script>
+    const fmt = n => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
+    fetch('/state.json?t=' + Date.now())
+      .then(r => { if (!r.ok) throw new Error('Belum ada data'); return r.json(); })
+      .then(data => {
+        document.getElementById('updated').textContent = 'Pembaruan Terakhir: ' + new Date(data.lastUpdated).toLocaleString('id-ID');
+        document.getElementById('netWorth').textContent = fmt(data.finance.totalNetWorth);
+        document.getElementById('hwm').textContent = fmt(data.finance.highWaterMarkDate1);
+        document.getElementById('yield').textContent = fmt(data.finance.buckets.safeYield);
+        document.getElementById('expand').textContent = fmt(data.finance.buckets.assetExpansion);
+        document.getElementById('trade').textContent = fmt(data.finance.buckets.quantTrading);
+        document.getElementById('traffic').textContent = fmt(data.finance.buckets.trafficArbitrage);
+
+        const pill = document.getElementById('lockStatus');
+        if (data.finance.isMonthEndLocked) {
+          pill.textContent = 'MODE KUNCI AKHIR BULAN (TGL 28-31)';
+          pill.style.color = '#f59e0b';
+          pill.style.borderColor = '#f59e0b';
+        }
+
+        document.getElementById('ventures').innerHTML = (data.activeVentures || []).slice().reverse().map(v => `
+          <div class="item">
+            <strong>[${v.sector}] <a href="${v.url}" target="_blank">${v.title} ↗</a></strong>
+            <div style="font-size:12px;color:#94a3b8;margin-top:4px;">Tanggal Rilis: ${v.date} • Target: ${v.market} • Harga: ${v.price}</div>
+            <p style="font-size:14px;margin:6px 0 0;color:#cbd5e1;">${v.promo}</p>
+          </div>
+        `).join('') || '<p style="color:#94a3b8;">Belum ada produk dirilis.</p>';
+
+        document.getElementById('logs').innerHTML = (data.weeklyLogs || []).map(l => `
+          <div class="item" style="border-left-color:#10b981;">
+            <div class="label">${new Date(l.timestamp).toLocaleString('id-ID')}</div>
+            <div style="margin:4px 0;font-weight:600;">${l.summary}</div>
+            <div style="font-size:13px;color:#94a3b8;">${l.treasuryStatus}</div>
+          </div>
+        `).join('') || '<p style="color:#94a3b8;">Belum ada catatan aktivitas.</p>';
+      })
+      .catch(() => {
+        document.getElementById('ventures').innerHTML = '<p style="color:#94a3b8;">Dashboard siap. Jalankan workflow pertama di GitHub Actions untuk melihat data live.</p>';
+      });
+  </script>
+</body>
+</html>
