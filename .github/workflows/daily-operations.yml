@@ -1,0 +1,38 @@
+name: Autonomous AI Enterprise Daily Cycle
+
+on:
+  schedule:
+    - cron: '0 1 * * *' # Otomatis jalan setiap hari pukul 08.00 WIB
+  workflow_dispatch:      # Bisa dijalankan manual kapan saja
+
+permissions:
+  contents: write
+
+jobs:
+  run-departments:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ambil Kode Perusahaan
+        uses: actions/checkout@v4
+
+      - name: Siapkan Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Jalankan Seluruh Departemen AI
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PAYMENT_LINK_USD: ${{ secrets.PAYMENT_LINK_USD }}
+          PAYMENT_LINK_IDR: ${{ secrets.PAYMENT_LINK_IDR }}
+        run: node scripts/run-company.mjs
+
+      - name: Simpan Hasil Kerja & Update Website
+        run: |
+          git config user.name "AI-Secretary-Bot"
+          git config user.email "bot@autonomous-corp.local"
+          git add .
+          git commit -m "chore(ai-corp): daily automated production & report" || exit 0
+          git push
+          
