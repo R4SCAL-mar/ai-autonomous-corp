@@ -1,0 +1,35 @@
+{
+  "companyName": "Autonomous Digital Holdings",
+  "lastUpdated": "2026-11-18T19:25:36.086Z",
+  "finance": {
+    "currency": "IDR",
+    "initialCapital": 0,
+    "highWaterMarkDate1": 0,
+    "totalNetWorth": 0,
+    "buckets": {
+      "safeYield": 0,
+      "assetExpansion": 0,
+      "quantTrading": 0,
+      "trafficArbitrage": 0
+    },
+    "isMonthEndLocked": false
+  },
+  "activeVentures": [
+    {
+      "date": "2026-11-18",
+      "sector": "Digital Productivity & Business Tools",
+      "title": "ProInvoice: Generator Faktur & Proposal Bisnis Instan",
+      "url": "/tools/invoicing-generator.html",
+      "market": "Global (USD) / Indonesia (IDR)",
+      "price": "$14.99 (Lifetime) atau Rp 225.000 (One-time)",
+      "promo": "Berhenti membuang waktu berjam-jam di Excel atau template Word yang rumit. ProInvoice memungkinkan freelancer, agensi, dan UMKM profesional menciptakan faktur, proposal, dan invoice yang terlihat mahal dan kredibel dalam hitungan detik. Tanpa perlu keahlian desain, tanpa langganan bulanan, dan tanpa batas jumlah unduhan. Unduh file PDF atau HTML siap kirim langsung ke klien Anda, tingkatkan profesionalisme, dan perpendek siklus penagihan hari ini juga."
+    }
+  ],
+  "weeklyLogs": [
+    {
+      "timestamp": "2026-11-18T19:25:36.086Z",
+      "summary": "[Digital Productivity & Business Tools] Merilis \"ProInvoice: Generator Faktur & Proposal Bisnis Instan\" ($14.99 (Lifetime) atau Rp 225.000 (One-time))",
+      "treasuryStatus": "Mode Bootstrapping Rp 0: Fokus memproduksi aset & mendatangkan transaksi pertama."
+    }
+  ]
+}
