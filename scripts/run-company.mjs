@@ -23,6 +23,17 @@ function safeParseJson(text) {
   return JSON.parse(cleaned);
 }
 
+function extractValidHtml(text) {
+  const stripped = text.replace(/^```html\s*|^```\s*|```$/gm, '').trim();
+  const docMatch = stripped.match(/<!doctype html[\s\S]*<\/html>/i);
+  if (docMatch) return docMatch[0].trim();
+
+  const htmlMatch = stripped.match(/<html[\s\S]*<\/html>/i);
+  if (htmlMatch) return `<!DOCTYPE html>\n${htmlMatch[0].trim()}`;
+
+  throw new Error('Output AI tidak mengandung struktur HTML yang valid');
+}
+
 async function getGroqCandidateModels() {
   const defaults = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
   try {
@@ -116,8 +127,18 @@ async function callGemini(systemInstruction, userPrompt, expectJson) {
 
     if (res.ok) {
       const data = await res.json();
-      console.log('Gemini berhasil dengan model:', model);
-      return data.candidates[0].content.parts[0].text;
+      const parts = data?.candidates?.[0]?.content?.parts || [];
+      // Abaikan bagian catatan pemikiran internal (thought: true) agar hanya mengambil hasil akhir
+      const finalOutput = parts
+        .filter(p => !p.thought && typeof p.text === 'string')
+        .map(p => p.text)
+        .join('\n')
+        .trim();
+
+      if (finalOutput) {
+        console.log('Gemini berhasil dengan model:', model);
+        return finalOutput;
+      }
     }
 
     lastErr = new Error(`Gemini (${model}) HTTP ${res.status}`);
@@ -127,19 +148,41 @@ async function callGemini(systemInstruction, userPrompt, expectJson) {
   throw lastErr;
 }
 
-async function askDepartment(mode, systemInstruction, userPrompt, expectJson = true) {
-  let rawText = '';
+async function askDepartment(mode, systemInstruction, userPrompt, modeType = 'json') {
+  const expectJson = modeType === 'json';
+  const parseOutput = raw => {
+    if (modeType === 'json') return safeParseJson(raw);
+    if (modeType === 'html') return extractValidHtml(raw);
+    return raw;
+  };
+
   try {
-    rawText = mode === 'fast' && GROQ_API_KEY
+    const rawPrimary = mode === 'fast' && GROQ_API_KEY
       ? await callGroq(systemInstruction, userPrompt, expectJson, false)
       : await callGemini(systemInstruction, userPrompt, expectJson);
+    return parseOutput(rawPrimary);
   } catch (primaryErr) {
     console.warn(`Fallback AI aktif (${mode}):`, primaryErr.message);
-    rawText = mode === 'fast'
+    const rawFallback = mode === 'fast'
       ? await callGemini(systemInstruction, userPrompt, expectJson)
       : await callGroq(systemInstruction, userPrompt, expectJson, true);
+    return parseOutput(rawFallback);
   }
-  return expectJson ? safeParseJson(rawText) : rawText;
+}
+
+function cleanupBrokenVentures(state) {
+  state.activeVentures = (state.activeVentures || []).filter(v => {
+    const relPath = v.url.replace(/^\//, '');
+    const fullPath = path.resolve('public', relPath);
+    if (!fs.existsSync(fullPath)) return false;
+    const content = fs.readFileSync(fullPath, 'utf-8');
+    const isValidHtml = /<!doctype html|<html/i.test(content);
+    if (!isValidHtml) {
+      console.log('Membersihkan file HTML rusak:', v.url);
+      fs.unlinkSync(fullPath);
+    }
+    return isValidHtml;
+  });
 }
 
 function updateSeoFiles(ventures) {
@@ -149,7 +192,7 @@ function updateSeoFiles(ventures) {
     ...ventures.map(v => `<url><loc>${SITE_URL}${v.url}</loc><lastmod>${v.date || today}</lastmod><priority>0.8</priority></url>`)
   ];
 
-  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="[http://www.sitemaps.org/schemas/sitemap/0.9](http://www.sitemaps.org/schemas/sitemap/0.9)">\n  ${urls.join('\n  ')}\n</urlset>\n`;
+  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  ${urls.join('\n  ')}\n</urlset>\n`;
   const robots = `User-agent: *\nAllow: /\nDisallow: /dashboard.html\nSitemap: ${SITE_URL}/sitemap.xml\n`;
 
   fs.writeFileSync(path.resolve('public/sitemap.xml'), sitemap);
@@ -158,6 +201,8 @@ function updateSeoFiles(ventures) {
 
 async function runEnterpriseCycle() {
   const state = JSON.parse(fs.readFileSync(STATE_PATH, 'utf-8'));
+  cleanupBrokenVentures(state);
+
   const now = new Date();
   const dayOfMonth = now.getUTCDate();
 
@@ -192,7 +237,7 @@ async function runEnterpriseCycle() {
       "usesSecurityApi": true,
       "toolSpec": "Deskripsi lengkap fitur interaktif halaman web yang akan dibangun tim developer"
     }`,
-    true
+    'json'
   );
 
   // 3. TIM PENGEMBANGAN & PRODUKSI: Merakit halaman web produk/layanan nyata
@@ -200,14 +245,13 @@ async function runEnterpriseCycle() {
     ? `PENTING: Halaman web ini WAJIB memiliki form input domain dan tombol "Scan Keamanan Sekarang" yang memanggil fetch('/.netlify/functions/security-recon', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ domain }) }) lalu menampilkan skor (0-100), grade (A-F), status tiap security header, status DNS SPF/DMARC, dan daftar rekomendasi perbaikan secara interaktif!`
     : '';
 
-  const htmlProduct = await askDepartment(
+  const cleanHtml = await askDepartment(
     'builder',
-    `Anda adalah Senior Full-Stack Developer. Buat 1 file HTML lengkap (CSS modern dark-mode responsif + JavaScript fungsional yang benar-benar bekerja di browser pengguna) sesuai spesifikasi. ${apiInstruction} Sertakan bagian penawaran jelas dengan dua tombol pembayaran: "Akses Pro / Full Audit Report (USD)" menuju "${PAYMENT_USD}" dan "Bayar QRIS / E-Wallet (IDR)" menuju "${PAYMENT_IDR}", serta link kembali ke "/index.html". Kembalikan HANYA kode HTML murni tanpa markdown backticks.`,
+    `Anda adalah Senior Full-Stack Developer. Buat 1 file HTML lengkap dimulai dari <!DOCTYPE html> hingga </html> (CSS modern dark-mode responsif + JavaScript fungsional yang benar-benar bekerja di browser pengguna) sesuai spesifikasi. ${apiInstruction} Sertakan bagian penawaran jelas dengan dua tombol pembayaran: "Akses Pro / Full Audit Report (USD)" menuju "${PAYMENT_USD}" dan "Bayar QRIS / E-Wallet (IDR)" menuju "${PAYMENT_IDR}", serta link kembali ke "/index.html". Kembalikan HANYA kode HTML valid tanpa penjelasan apa pun.`,
     `Judul: ${ceoDecision.title}. Sektor: ${ceoDecision.sector}. Spesifikasi: ${ceoDecision.toolSpec}. Harga: ${ceoDecision.priceLabel}.`,
-    false
+    'html'
   );
 
-  const cleanHtml = htmlProduct.replace(/^```html\s*|```$/gm, '').trim();
   const safeSlug = ceoDecision.slug.toLowerCase().replace(/[^a-z0-9-]/g, '') || `venture-${Date.now()}`;
   fs.mkdirSync(path.resolve('public/tools'), { recursive: true });
   fs.writeFileSync(path.resolve(`public/tools/${safeSlug}.html`), cleanHtml);
@@ -245,4 +289,4 @@ async function runEnterpriseCycle() {
 }
 
 runEnterpriseCycle();
-    
+                       
