@@ -11,6 +11,8 @@ const STATE_PATH = path.resolve('data/company-state.json');
 const GROQ_BASE = ['https:/', 'api.groq.com', 'openai', 'v1'].join('/');
 const GEMINI_BASE = ['https:/', 'generativelanguage.googleapis.com', 'v1beta'].join('/');
 
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 function safeParseJson(text) {
   const cleaned = text.replace(/^```json\s*|^```\s*|```$/gm, '').trim();
   const start = cleaned.indexOf('{');
@@ -21,79 +23,121 @@ function safeParseJson(text) {
   return JSON.parse(cleaned);
 }
 
-async function getActiveGroqModel() {
-  const res = await fetch(`${GROQ_BASE}/models`, {
-    headers: { Authorization: `Bearer ${GROQ_API_KEY}` }
-  });
-  if (!res.ok) throw new Error(`Groq Models HTTP ${res.status}`);
-  const data = await res.json();
-  const models = (data.data || [])
-    .map(m => m.id)
-    .filter(id => !/whisper|tts|guard|embed|vision|orpheus|playai/i.test(id));
-  const preferred = models.find(id => /llama-3\.3|llama-3\.1|qwen|gpt-oss|llama/i.test(id));
-  return preferred || models[0];
+async function getGroqCandidateModels() {
+  const defaults = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+  try {
+    const res = await fetch(`${GROQ_BASE}/models`, {
+      headers: { Authorization: `Bearer ${GROQ_API_KEY}` }
+    });
+    if (!res.ok) return defaults;
+    const data = await res.json();
+    const fetched = (data.data || [])
+      .map(m => m.id)
+      .filter(id => !/whisper|tts|guard|embed|vision|orpheus|playai|safeguard/i.test(id));
+    return [...new Set([...defaults, ...fetched])];
+  } catch {
+    return defaults;
+  }
 }
 
-async function getActiveGeminiModel() {
-  const res = await fetch(`${GEMINI_BASE}/models?key=${GEMINI_API_KEY}`);
-  if (!res.ok) throw new Error(`Gemini Models HTTP ${res.status}`);
-  const data = await res.json();
-  const models = (data.models || [])
-    .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
-    .map(m => m.name.replace(/^models\//, ''));
-  return models.find(id => /flash/i.test(id)) || models.find(id => /gemini/i.test(id));
+async function getGeminiCandidateModels() {
+  const defaults = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
+  try {
+    const res = await fetch(`${GEMINI_BASE}/models?key=${GEMINI_API_KEY}`);
+    if (!res.ok) return defaults;
+    const data = await res.json();
+    const fetched = (data.models || [])
+      .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+      .map(m => m.name.replace(/^models\//, ''))
+      .filter(id => !/image|audio|tts|embed|aqa|vision|robotics|computer-use|deep-research/i.test(id));
+    const stable = fetched.filter(id => !/exp|preview/i.test(id));
+    const others = fetched.filter(id => /exp|preview/i.test(id));
+    return [...new Set([...defaults, ...stable, ...others])];
+  } catch {
+    return defaults;
+  }
 }
 
-async function callGroq(systemInstruction, userPrompt, expectJson) {
-  const model = await getActiveGroqModel();
-  const res = await fetch(`${GROQ_BASE}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${GROQ_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: systemInstruction },
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: 0.75,
-      ...(expectJson ? { response_format: { type: 'json_object' } } : {})
-    })
-  });
-  if (!res.ok) throw new Error(`Groq Chat HTTP ${res.status}`);
-  const data = await res.json();
-  return data.choices[0].message.content;
+async function callGroq(systemInstruction, userPrompt, expectJson, preferHighQuota = false) {
+  let models = await getGroqCandidateModels();
+  if (preferHighQuota) {
+    models = [
+      ...models.filter(m => /8b|instant|20b|gemma/i.test(m)),
+      ...models.filter(m => !/8b|instant|20b|gemma/i.test(m))
+    ];
+  }
+
+  let lastErr = new Error('Tidak ada model Groq yang tersedia');
+  for (const model of models.slice(0, 6)) {
+    const res = await fetch(`${GROQ_BASE}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemInstruction },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.7,
+        ...(expectJson ? { response_format: { type: 'json_object' } } : {})
+      })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      console.log('Groq berhasil dengan model:', model);
+      return data.choices[0].message.content;
+    }
+
+    lastErr = new Error(`Groq (${model}) HTTP ${res.status}`);
+    console.warn(lastErr.message, '- mencoba model berikutnya...');
+    if (res.status === 429) await sleep(2000);
+  }
+  throw lastErr;
 }
 
 async function callGemini(systemInstruction, userPrompt, expectJson) {
-  const model = await getActiveGeminiModel();
-  const res = await fetch(`${GEMINI_BASE}/models/${model}:generateContent?key=${GEMINI_API_KEY}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: systemInstruction }] },
-      contents: [{ parts: [{ text: userPrompt }] }],
-      generationConfig: expectJson ? { responseMimeType: 'application/json' } : {}
-    })
-  });
-  if (!res.ok) throw new Error(`Gemini Generate HTTP ${res.status}`);
-  const data = await res.json();
-  return data.candidates[0].content.parts[0].text;
+  const models = await getGeminiCandidateModels();
+  let lastErr = new Error('Tidak ada model Gemini yang tersedia');
+
+  for (const model of models.slice(0, 6)) {
+    const res = await fetch(`${GEMINI_BASE}/models/${model}:generateContent?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemInstruction }] },
+        contents: [{ parts: [{ text: userPrompt }] }],
+        generationConfig: expectJson ? { responseMimeType: 'application/json' } : {}
+      })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      console.log('Gemini berhasil dengan model:', model);
+      return data.candidates[0].content.parts[0].text;
+    }
+
+    lastErr = new Error(`Gemini (${model}) HTTP ${res.status}`);
+    console.warn(lastErr.message, '- mencoba model berikutnya...');
+    if (res.status === 429) await sleep(2000);
+  }
+  throw lastErr;
 }
 
 async function askDepartment(mode, systemInstruction, userPrompt, expectJson = true) {
   let rawText = '';
   try {
     rawText = mode === 'fast' && GROQ_API_KEY
-      ? await callGroq(systemInstruction, userPrompt, expectJson)
+      ? await callGroq(systemInstruction, userPrompt, expectJson, false)
       : await callGemini(systemInstruction, userPrompt, expectJson);
   } catch (primaryErr) {
     console.warn(`Fallback AI aktif (${mode}):`, primaryErr.message);
     rawText = mode === 'fast'
       ? await callGemini(systemInstruction, userPrompt, expectJson)
-      : await callGroq(systemInstruction, userPrompt, expectJson);
+      : await callGroq(systemInstruction, userPrompt, expectJson, true);
   }
   return expectJson ? safeParseJson(rawText) : rawText;
 }
@@ -201,3 +245,4 @@ async function runEnterpriseCycle() {
 }
 
 runEnterpriseCycle();
+    
