@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MetaTag Pro – Generator Meta Tag & Open Graph Instan</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            --bg:#f5f5f5;
+            --text:#222;
+            --card:#fff;
+            --primary:#0066ff;
+            --danger:#ff4d4d;
+            --success:#28a745;
+            --warning:#ffc107;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg:#121212;
+                --text:#e0e0e0;
+                --card:#1e1e1e;
+                --primary:#3399ff;
+                --danger:#ff6666;
+                --success:#4caf50;
+                --warning:#ffb74d;
+            }
+        }
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{
+            font-family:system-ui,Arial,sans-serif;
+            background:var(--bg);
+            color:var(--text);
+            line-height:1.5;
+            padding:1rem;
+        }
+        h1{font-size:1.8rem;margin-bottom:.5rem;}
+        .container{max-width:1200px;margin:auto;display:grid;grid-template-columns:1fr;gap:1.5rem;}
+        @media(min-width:768px){
+            .container{grid-template-columns:1fr 1fr;}
+        }
+        .card{
+            background:var(--card);
+            border-radius:8px;
+            padding:1.5rem;
+            box-shadow:0 2px 8px rgba(0,0,0,.1);
+        }
+        label{display:block;margin-top:.8rem;font-weight:600;}
+        input, textarea{
+            width:100%;
+            padding:.5rem;
+            margin-top:.3rem;
+            border:1px solid #ccc;
+            border-radius:4px;
+            font:inherit;
+            background:#fff;
+            color:#000;
+        }
+        @media (prefers-color-scheme: dark) {
+            input, textarea{
+                background:#2b2b2b;
+                color:#e0e0e0;
+                border:1px solid #444;
+            }
+        }
+        .counter{
+            font-size:.85rem;
+            margin-top:.2rem;
+        }
+        .counter.green{color:var(--success);}
+        .counter.yellow{color:var(--warning);}
+        .counter.red{color:var(--danger);}
+        button{
+            cursor:pointer;
+            padding:.6rem 1rem;
+            border:none;
+            border-radius:4px;
+            font-size:1rem;
+            margin-top:.8rem;
+            background:var(--primary);
+            color:#fff;
+            transition:background .2s;
+        }
+        button:hover{background:#0055dd;}
+        .preview{
+            font-family:Arial,sans-serif;
+            margin-top:.5rem;
+        }
+        .preview .search{
+            border:1px solid #ddd;
+            padding:1rem;
+            border-radius:4px;
+            background:#fff;
+        }
+        .preview .search h3{
+            font-size:1rem;
+            margin-bottom:.2rem;
+            color:#1a0dab;
+        }
+        .preview .search p{
+            margin:0;
+            color:#545454;
+        }
+        .preview .fb, .preview .tw{
+            border:1px solid #ddd;
+            border-radius:4px;
+            padding:.8rem;
+            background:#fff;
+            margin-top:.5rem;
+        }
+        .preview .fb .title,.preview .tw .title{
+            font-weight:bold;
+            color:#000;
+        }
+        .preview .fb .desc,.preview .tw .desc{
+            color:#4b4f56;
+        }
+        .output{
+            width:100%;
+            height:150px;
+            margin-top:.5rem;
+            font-family:monospace;
+            resize:vertical;
+        }
+        .offer{
+            display:flex;
+            flex-direction:column;
+            gap:.8rem;
+        }
+        .offer a{
+            text-decoration:none;
+            text-align:center;
+            padding:.8rem;
+            border-radius:4px;
+            font-weight:600;
+            color:#fff;
+        }
+        .offer .usd{background:#28a745;}
+        .offer .idr{background:#ff6f00;}
+        .back-link{
+            display:inline-block;
+            margin-top:1rem;
+            color:var(--primary);
+            text-decoration:none;
+        }
+    </style>
+</head>
+<body>
+    <h1>MetaTag Pro – Generator Meta Tag & Open Graph Instan</h1>
+    <div class="container">
+        <!-- Input Form -->
+        <div class="card">
+            <label for="title">Page Title</label>
+            <input type="text" id="title" placeholder="Enter page title">
+            <div id="titleCounter" class="counter">0 / 60</div>
+
+            <label for="desc">Meta Description</label>
+            <textarea id="desc" rows="3" placeholder="Enter meta description"></textarea>
+            <div id="descCounter" class="counter">0 / 160</div>
+
+            <label for="slug">Slug / URL</label>
+            <input type="text" id="slug" placeholder="e.g. my-awesome-page">
+
+            <label for="ogimg">OG Image URL</label>
+            <input type="url" id="ogimg" placeholder="https://example.com/image.jpg">
+
+            <button id="generateBtn">Generate Code</button>
+            <button id="copyJsonBtn">Copy JSON‑LD</button>
+
+            <textarea id="output" class="output" readonly placeholder="Generated meta tags will appear here..."></textarea>
+        </div>
+
+        <!-- Live Preview -->
+        <div class="card">
+            <h2>Live Preview</h2>
+            <div class="preview">
+                <!-- Google -->
+                <div class="search">
+                    <h3 id="previewTitle">Page Title</h3>
+                    <p id="previewUrl">https://example.com/slug</p>
+                    <p id="previewDesc">Meta description will appear here.</p>
+                </div>
+                <!-- Facebook -->
+                <div class="fb">
+                    <div class="title" id="fbTitle">Page Title</div>
+                    <div class="desc" id="fbDesc">Meta description will appear here.</div>
+                    <div class="url" id="fbUrl">example.com/slug</div>
+                </div>
+                <!-- Twitter -->
+                <div class="tw">
+                    <div class="title" id="twTitle">Page Title</div>
+                    <div class="desc" id="twDesc">Meta description will appear here.</div>
+                    <div class="url" id="twUrl">example.com/slug</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Offer Section -->
+    <div class="card offer" style="margin-top:2rem;">
+        <h2>Upgrade to Pro</h2>
+        <p>Dapatkan semua fitur premium seumur hidup hanya dengan satu kali bayar.</p>
+        <a href="https://maco24.gumroad.com" class="usd">Akses Pro Global (USD)</a>
+        <a href="https://lynk.id/r4scal" class="idr">Bayar QRIS / E‑Wallet (IDR)</a>
+        <a href="/index.html" class="back-link">← Kembali ke Beranda</a>
+    </div>
+
+    <script>
+        const titleInput=document.getElementById('title');
+        const descInput=document.getElementById('desc');
+        const slugInput=document.getElementById('slug');
+        const ogImgInput=document.getElementById('ogimg');
+        const titleCounter=document.getElementById('titleCounter');
+        const descCounter=document.getElementById('descCounter');
+        const previewTitle=document.getElementById('previewTitle');
+        const previewDesc=document.getElementById('previewDesc');
+        const previewUrl=document.getElementById('previewUrl');
+        const fbTitle=document.getElementById('fbTitle');
+        const fbDesc=document.getElementById('fbDesc');
+        const fbUrl=document.getElementById('fbUrl');
+        const twTitle=document.getElementById('twTitle');
+        const twDesc=document.getElementById('twDesc');
+        const twUrl=document.getElementById('twUrl');
+        const generateBtn=document.getElementById('generateBtn');
+        const copyJsonBtn=document.getElementById('copyJsonBtn');
+        const output=document.getElementById('output');
+
+        function updateCounter(el, counterEl, max, thresholds){
+            const len=el.value.length;
+            counterEl.textContent=`${len} / ${max}`;
+            let cls='green';
+            if(len>max) cls='red';
+            else if(len>thresholds.warn) cls='yellow';
+            else cls='green';
+            counterEl.className=`counter ${cls}`;
+        }
+
+        function updatePreview(){
+            const title=titleInput.value||'Page Title';
+            const desc=descInput.value||'Meta description will appear here.';
+            const slug=slugInput.value||'slug';
+            const url=`https://example.com/${slug}`;
+
+            previewTitle.textContent=title;
+            previewDesc.textContent=desc;
+            previewUrl.textContent=url;
+
+            fbTitle.textContent=title;
+            fbDesc.textContent=desc;
+            fbUrl.textContent=url.replace('https://','');
+
+            twTitle.textContent=title;
+            twDesc.textContent=desc;
+            twUrl.textContent=url.replace('https://','');
+        }
+
+        titleInput.addEventListener('input',()=>{updateCounter(titleInput,titleCounter,60,{warn:45});updatePreview();});
+        descInput.addEventListener('input',()=>{updateCounter(descInput,descCounter,160,{warn:130});updatePreview();});
+        slugInput.addEventListener('input',updatePreview);
+        ogImgInput.addEventListener('input',()=>{});
+
+        generateBtn.addEventListener('click',()=>{
+            const title=titleInput.value.trim();
+            const desc=descInput.value.trim();
+            const slug=slugInput.value.trim();
+            const ogImg=ogImgInput.value.trim();
+            const url=slug?`https://example.com/${slug}`:'https://example.com/';
+
+            const lines=[
+`<title>${title}</title>`,
+`<meta name="description" content="${desc}">`,
+`<link rel="canonical" href="${url}">`,
+`<meta property="og:title" content="${title}">`,
+`<meta property="og:description" content="${desc}">`,
+`<meta property="og:url" content="${url}">`,
+`<meta property="og:type" content="website">`,
+ogImg?`<meta property="og:image" content="${ogImg}">`:'',
+`<meta name="twitter:card" content="summary_large_image">`,
+`<meta name="twitter:title" content="${title}">`,
+`<meta name="twitter:description" content="${desc}">`,
+ogImg?`<meta name="twitter:image" content="${ogImg}">`:''
+            ].filter(l=>l!=='').join('\n');
+
+            output.value=lines;
+            navigator.clipboard.writeText(lines).then(()=>alert('Meta tag code copied to clipboard!'));
+        });
+
+        copyJsonBtn.addEventListener('click',()=>{
+            const title=titleInput.value.trim();
+            const desc=descInput.value.trim();
+            const slug=slugInput.value.trim();
+            const ogImg=ogImgInput.value.trim();
+            const url=slug?`https://example.com/${slug}`:'https://example.com/';
+
+            const jsonLD = {
+                "@context":"https://schema.org",
+                "@type":"WebPage",
+                "name": title,
+                "description": desc,
+                "url": url,
+                "image": ogImg || undefined
+            };
+            const jsonStr = JSON.stringify(jsonLD, null, 2);
+            navigator.clipboard.writeText(jsonStr).then(()=>alert('JSON‑LD copied to clipboard!'));
+        });
+
+        // Initial counters and preview
+        updateCounter(titleInput,titleCounter,60,{warn:45});
+        updateCounter(descInput,descCounter,160,{warn:130});
+        updatePreview();
+    </script>
+</body>
+</html>
