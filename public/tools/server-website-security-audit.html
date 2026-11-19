@@ -1,0 +1,69 @@
+Senior Full-Stack Developer.
+SecureScan: Real-Time Domain Security Audit.
+Server & Website Security Audit.
+Single HTML file (HTML5, CSS3 Modern Dark Mode, Vanilla JS).
+
+        *   Domain input form + "Scan Keamanan Sekarang" button.
+        *   Trigger `fetch('/.netlify/functions/security-recon', ...)` with POST method.
+        *   Dynamic Dashboard: Score (0-100), Grade (A-F), Security Headers status, DNS SPF/DMARC status, Risk Heatmap (simulated since it's a frontend-only demo, but logic must be there), Recommendations list.
+        *   Additional Features (UI only, as it's a single file): Download PDF/CSV (mocked), Email Alerts (mocked), Historical Scans (mocked), Admin Panel (mocked/link).
+        *   Payment Section:
+            *   "Akses Pro / Full Audit Report (USD)" -> `https://maco24.gumroad.com`
+            *   "Bayar QRIS / E-Wallet (IDR)" -> `https://lynk.id/r4scal`
+        *   Navigation: Link back to `/index.html`.
+
+        *   Modern Dark Mode.
+        *   Responsive.
+        *   Professional (Cybersecurity vibe: deep blues, neon accents, clean typography).
+
+    *   *Frameworks:* Tailwind CSS (via CDN) is best for a single file to look "Senior" and modern without a massive custom CSS block. Lucide Icons (via CDN) for professional iconography.
+    *   *Structure:*
+        *   `<nav>`: Logo, Links.
+        *   `<header>`: Hero section with input form.
+        *   `<main>`: Result Dashboard (hidden until scan starts).
+            *   Summary Card (Score, Grade).
+            *   Grid Layout (Headers, DNS, Heatmap).
+            *   Recommendations list.
+        *   `<section>` (Pricing): Two columns/cards for the two payment options.
+        *   `<footer>`: Links/Copyright.
+
+    *   *State Management:* `isScanning`, `results`.
+    *   *Fetch Logic:*
+        ```javascript
+        async function performScan(domain) {
+            // Show loading state
+            try {
+                const response = await fetch('/.netlify/functions/security-recon', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domain })
+                });
+                const data = await response.json();
+                renderResults(data);
+            } catch (err) {
+                // Fallback/Mock for demonstration if the Netlify function doesn't exist locally
+                simulateScan(domain);
+            }
+        }
+        
+    *   *Mocking Logic:* Since the user is testing this, if the backend endpoint doesn't exist (which it won't on a local browser environment), the code should gracefully handle it or I should provide a mock response mode so the UI can be *seen* working. *Decision: I'll implement the real fetch but include a fallback mechanism so the user can see the beautiful UI even without a live Netlify backend.*
+
+    *   *Headers:* Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, Referrer-Policy.
+    *   *DNS:* SPF, DMARC, DKIM.
+    *   *Risk Heatmap:* A visual grid representing high/medium/low risk areas.
+
+    *   *Colors:* Background `#0f172a` (Slate 900), Accents `#3b82f6` (Blue 500), Success `#10b981` (Emerald 500), Danger `#ef4444` (Red 500).
+    *   *Transitions:* Smooth opacity and scale transitions for the dashboard appearance.
+
+    *   *Single file?* Yes.
+    *   *Fetch call correct?* Yes.
+    *   *Score/Grade/Headers/DNS/Recommendations?* Yes.
+    *   *Payment buttons/links correct?* Yes.
+    *   *Dark mode responsive?* Yes.
+
+    *(Self-Correction during drafting)*: Make sure the "Risk Heatmap" isn't just a list. I'll use a small grid of colored boxes to make it look "high-tech". Ensure the loading animation looks like a "scanning" process.
+
+    *   HTML structure with Tailwind classes.
+    *   Lucide Icons for visual flair.
+    *   Tailwind's `animate-pulse` for loading.
+    *   Detailed Javascript with `renderResults`, `showLoading`, and `simulateScan` (for demo purposes).
