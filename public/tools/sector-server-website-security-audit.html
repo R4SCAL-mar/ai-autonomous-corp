@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Audit Keamanan Server &amp; Situs Web</title>
+  <style>
+    :root {
+      --bg:#121212;
+      --bg-card:#1e1e1e;
+      --text:#e0e0e0;
+      --primary:#4f46e5;
+      --success:#10b981;
+      --danger:#ef4444;
+      --warning:#f59e0b;
+      --radius:8px;
+      --transition:.3s ease;
+    }
+    @media (prefers-color-scheme: light) {
+      :root{
+        --bg:#f5f5f5;
+        --bg-card:#ffffff;
+        --text:#111827;
+      }
+    }
+    body{
+      margin:0;
+      font-family:system-ui,Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      line-height:1.6;
+    }
+    .container{
+      max-width:900px;
+      margin:0 auto;
+      padding:1rem;
+    }
+    h1{
+      text-align:center;
+      margin-bottom:1rem;
+      font-size:2rem;
+    }
+    form{
+      display:flex;
+      flex-wrap:wrap;
+      gap:0.5rem;
+      justify-content:center;
+      margin-bottom:1.5rem;
+    }
+    input[type="text"]{
+      flex:1 1 250px;
+      padding:0.75rem 1rem;
+      border:none;
+      border-radius:var(--radius);
+      background:var(--bg-card);
+      color:var(--text);
+    }
+    button{
+      padding:0.75rem 1.5rem;
+      border:none;
+      border-radius:var(--radius);
+      background:var(--primary);
+      color:#fff;
+      cursor:pointer;
+      transition:background var(--transition);
+    }
+    button:hover{
+      background:#4338ca;
+    }
+    .card{
+      background:var(--bg-card);
+      border-radius:var(--radius);
+      padding:1rem;
+      margin-bottom:1rem;
+      box-shadow:0 2px 4px rgba(0,0,0,0.2);
+    }
+    .score{
+      font-size:2.5rem;
+      font-weight:bold;
+      color:var(--success);
+    }
+    .grade{
+      font-size:2rem;
+      font-weight:bold;
+      color:var(--primary);
+    }
+    .status{
+      display:flex;
+      flex-wrap:wrap;
+      gap:0.5rem;
+    }
+    .status span{
+      padding:0.3rem 0.6rem;
+      border-radius:var(--radius);
+      background:var(--warning);
+      color:#fff;
+      font-size:0.9rem;
+    }
+    .status .ok{background:var(--success);}
+    .status .missing{background:var(--danger);}
+    ul{
+      padding-left:1.5rem;
+    }
+    .offers{
+      display:flex;
+      flex-direction:column;
+      gap:0.75rem;
+      align-items:center;
+      margin-top:2rem;
+    }
+    .offers a{
+      text-decoration:none;
+    }
+    .offers button{
+      width:100%;
+      max-width:300px;
+      background:var(--primary);
+    }
+    .back-link{
+      display:block;
+      text-align:center;
+      margin-top:2rem;
+      color:var(--primary);
+      text-decoration:none;
+    }
+    @media (max-width:600px){
+      h1{font-size:1.5rem;}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Audit Keamanan Server &amp; Situs Web</h1>
+    <form id="auditForm">
+      <input type="text" id="domainInput" placeholder="Masukkan domain (contoh: example.com)" required>
+      <button type="submit">Scan Keamanan Sekarang</button>
+    </form>
+
+    <div id="resultArea"></div>
+
+    <section class="offers">
+      <a href="https://maco24.gumroad.com" target="_blank" rel="noopener">
+        <button>Akses Pro / Full Audit Report (USD)</button>
+      </a>
+      <a href="https://lynk.id/r4scal" target="_blank" rel="noopener">
+        <button>Bayar QRIS / E-Wallet (IDR)</button>
+      </a>
+    </section>
+
+    <a class="back-link" href="/index.html">← Kembali ke Beranda</a>
+  </div>
+
+  <script>
+    const form = document.getElementById('auditForm');
+    const resultArea = document.getElementById('resultArea');
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const domain = document.getElementById('domainInput').value.trim();
+      if (!domain) return;
+
+      resultArea.innerHTML = '<p>Memindai, mohon tunggu...</p>';
+
+      try {
+        const response = await fetch('/.netlify/functions/security-recon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ domain })
+        });
+
+        if (!response.ok) throw new Error('Server error');
+
+        const data = await response.json();
+        renderResult(data);
+      } catch (err) {
+        resultArea.innerHTML = `<p style="color:${getComputedStyle(document.documentElement).getPropertyValue('--danger')};">Terjadi kesalahan: ${err.message}</p>`;
+      }
+    });
+
+    function renderResult(data) {
+      const { score, grade, headers = {}, dns = {}, recommendations = [] } = data;
+
+      const headerStatus = Object.entries(headers).map(([key, val]) => {
+        const cls = val ? 'ok' : 'missing';
+        const txt = val ? 'Ada' : 'Tidak Ada';
+        return `<span class="${cls}">${key}: ${txt}</span>`;
+      }).join('');
+
+      const dnsStatus = `
+        <span class="${dns.spf ? 'ok' : 'missing'}">SPF: ${dns.spf ? 'Valid' : 'Tidak Valid'}</span>
+        <span class="${dns.dmarc ? 'ok' : 'missing'}">DMARC: ${dns.dmarc ? 'Valid' : 'Tidak Valid'}</span>
+      `;
+
+      const recList = recommendations.length
+        ? `<ul>${recommendations.map(r => `<li>${r}</li>`).join('')}</ul>`
+        : '<p>Tidak ada rekomendasi.</p>';
+
+      resultArea.innerHTML = `
+        <div class="card">
+          <p>Skor Keamanan: <span class="score">${score ?? 'N/A'}</span>/100</p>
+          <p>Grade: <span class="grade">${grade ?? 'N/A'}</span></p>
+        </div>
+        <div class="card">
+          <h3>Status Header Keamanan</h3>
+          <div class="status">${headerStatus}</div>
+        </div>
+        <div class="card">
+          <h3>Status DNS</h3>
+          <div class="status">${dnsStatus}</div>
+        </div>
+        <div class="card">
+          <h3>Rekomendasi Perbaikan</h3>
+          ${recList}
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>
