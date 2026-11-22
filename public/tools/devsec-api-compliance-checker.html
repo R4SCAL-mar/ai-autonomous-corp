@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevSec API | Automated Security Compliance Checker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #6366f1;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: #f1f5f9;
+            scroll-behavior: smooth;
+        }
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .code-font { font-family: 'Fira Code', monospace; }
+        .status-dot {
+            height: 10px;
+            width: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .dot-green { background-color: #10b981; box-shadow: 0 0 8px #10b981; }
+        .dot-yellow { background-color: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+        .dot-red { background-color: #f43f5e; box-shadow: 0 0 8px #f43f5e; }
+        
+        .loader {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid var(--accent);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .gradient-text {
+            background: linear-gradient(90deg, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-20">
+
+    <!-- Navigation -->
+    <nav class="p-6 flex justify-between items-center max-w-7xl mx-auto">
+        <div class="text-2xl font-bold tracking-tighter flex items-center gap-2">
+            <div class="w-8 h-8 bg-indigo-600 rounded flex items-center justify-center text-white text-sm">DS</div>
+            DevSec <span class="text-indigo-400">API</span>
+        </div>
+        <div class="space-x-6 text-sm font-medium text-slate-400">
+            <a href="/index.html" class="hover:text-white transition">Home</a>
+            <a href="#pro" class="hover:text-white transition">Pro API</a>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-6 mt-12">
+        <!-- Hero Section -->
+        <section class="text-center mb-16">
+            <h1 class="text-4xl md:text-6xl font-bold mb-4 tracking-tight">Automated <span class="gradient-text">Security Compliance</span></h1>
+            <p class="text-slate-400 text-lg max-w-2xl mx-auto">Scan your domain for security header vulnerabilities, SSL validity, and DNS email security in real-time.</p>
+        </section>
+
+        <!-- Scanner Input -->
+        <section class="max-w-2xl mx-auto mb-20">
+            <div class="glass p-2 rounded-2xl flex flex-col md:flex-row gap-2 shadow-2xl">
+                <input type="text" id="domainInput" placeholder="example.com" 
+                    class="bg-transparent w-full px-6 py-4 text-lg focus:outline-none text-white placeholder-slate-500">
+                <button onclick="runScan()" id="scanBtn" 
+                    class="bg-indigo-600 hover:bg-indigo-500 transition-all px-8 py-4 rounded-xl font-bold flex items-center justify-center gap-2 whitespace-nowrap">
+                    <span id="btnText">Scan Keamanan Sekarang</span>
+                    <div id="btnLoader" class="loader hidden"></div>
+                </button>
+            </div>
+            <p class="text-center text-xs text-slate-500 mt-4 italic">Free tier: 3 scans per hour. Pro tier: Unlimited.</p>
+        </section>
+
+        <!-- Results Dashboard (Hidden by default) -->
+        <div id="resultsPanel" class="hidden space-y-8">
+            
+            <!-- Score Header -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass p-8 rounded-3xl flex flex-col items-center justify-center text-center">
+                    <div class="text-sm text-slate-400 uppercase tracking-widest mb-2">Security Score</div>
+                    <div id="scoreValue" class="text-6xl font-bold">0</div>
+                    <div id="gradeBadge" class="mt-2 px-4 py-1 rounded-full text-sm font-bold">Grade: -</div>
+                </div>
+                <div class="md:col-span-2 glass p-8 rounded-3xl">
+                    <h3 class="text-xl font-semibold mb-6">Compliance Overview</h3>
+                    <div class="space-y-4" id="statusList">
+                        <!-- Dynamic Content -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Details Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Headers -->
+                <div class="glass p-6 rounded-3xl">
+                    <h4 class="text-indigo-400 font-semibold mb-4">HTTP Security Headers</h4>
+                    <ul id="headerList" class="space-y-3 text-sm"></ul>
+                </div>
+                <!-- DNS & HTTPS -->
+                <div class="glass p-6 rounded-3xl">
+                    <h4 class="text-indigo-400 font-semibold mb-4">Network & Mail Security</h4>
+                    <ul id="networkList" class="space-y-3 text-sm"></ul>
+                </div>
+            </div>
+
+            <!-- Recommendations -->
+            <div class="glass p-8 rounded-3xl border-l-4 border-indigo-500">
+                <h4 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    🚀 Recommended Actions
+                </h4>
+                <ul id="recommendationList" class="list-disc list-inside space-y-2 text-slate-300"></ul>
+            </div>
+
+            <!-- JSON Output -->
+            <div class="glass p-6 rounded-3xl relative">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="text-sm font-mono text-slate-400 uppercase">Raw JSON Response</h4>
+                    <button onclick="copyJSON()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded transition">Copy JSON</button>
+                </div>
+                <pre id="jsonOutput" class="code-font text-xs text-indigo-300 overflow-x-auto max-h-60 p-4 bg-black/30 rounded-xl"></pre>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="hidden text-center p-10 glass rounded-3xl border-red-500/50 text-red-400">
+            Something went wrong. Please check the domain or try again later.
+        </div>
+
+        <!-- Pro API Section -->
+        <section id="pro" class="mt-32 pt-20 border-t border-slate-800">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold mb-4">Upgrade to <span class="text-indigo-400">DevSec Pro</span></h2>
+                <p class="text-slate-400">Integrate our security scanner directly into your CI/CD pipeline.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                <!-- API Docs Mini -->
+                <div class="glass p-8 rounded-3xl">
+                    <h3 class="text-xl font-bold mb-4">API Documentation</h3>
+                    <div class="bg-black/40 p-4 rounded-xl text-xs code-font mb-6">
+                        <p class="text-indigo-400">POST /api/v1/scan</p>
+                        <p class="text-slate-500 mt-2">// Payload</p>
+                        <p class="text-emerald-400">{ "domain": "target.com" }</p>
+                    </div>
+                    <ul class="text-sm text-slate-400 space-y-2">
+                        <li>✅ High-frequency requests</li>
+                        <li>✅ Webhook notifications</li>
+                        <li>✅ Detailed CVE reports</li>
+                    </ul>
+                </div>
+
+                <!-- Pricing/Payment -->
+                <div class="bg-indigo-600/10 border border-indigo-500/50 p-8 rounded-3xl flex flex-col justify-between">
+                    <div>
+                        <div class="text-sm font-bold text-indigo-400 uppercase tracking-widest mb-2">Full Audit Report</div>
+                        <div class="text-4xl font-bold mb-6">$9.99 <span class="text-lg text-slate-500 font-normal">/mo</span></div>
+                        <p class="text-sm text-slate-300 mb-8">Get unlimited scans, full PDF reports, and API priority access.</p>
+                    </div>
+                    <div class="space-y-3">
+                        <a href="https://maco24.gumroad.com" target="_blank" class="block w-full text-center bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold transition">
+                            Akses Pro / Full Audit Report (USD)
+                        </a>
+                        <a href="https://lynk.id/r4scal" target="_blank" class="block w-full text-center bg-white/10 hover:bg-white/20 py-3 rounded-xl font-bold transition">
+                            Bayar QRIS / E-Wallet (IDR)
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="mt-32 text-center text-slate-600 text-sm">
+        <p>&copy; 2024 DevSec API Utility. All rights reserved.</p>
+        <div class="mt-2">
+            <a href="/index.html" class="hover:text-indigo-400 transition">Back to Home</a>
+        </div>
+    </footer>
+
+    <script>
+        let lastRawResponse = null;
+
+        async function runScan() {
+            const domain = document.getElementById('domainInput').value.trim();
+            const btnText = document.getElementById('btnText');
+            const btnLoader = document.getElementById('btnLoader');
+            const scanBtn = document.getElementById('scanBtn');
+            const resultsPanel = document.getElementById('resultsPanel');
+            const errorState = document.getElementById('errorState');
+
+            if (!domain) {
+                alert('Please enter a domain');
+                return;
+            }
+
+            // UI Reset
+            errorState.classList.add('hidden');
+            resultsPanel.classList.add('hidden');
+            btnText.classList.add('hidden');
+            btnLoader.classList.remove('hidden');
+            scanBtn.disabled = true;
+
+            try {
+                const response = await fetch('/.netlify/functions/security-recon', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domain })
+                });
+
+                if (!response.ok) throw new Error('Scan failed');
+
+                const data = await response.json();
+                lastRawResponse = data;
+                renderResults(data);
+                
+                resultsPanel.classList.remove('hidden');
+                resultsPanel.scrollIntoView({ behavior: 'smooth' });
+            } catch (err) {
+                console.error(err);
+                errorState.classList.remove('hidden');
+                errorState.scrollIntoView({ behavior: 'smooth' });
+            } finally {
+                btnText.classList.remove('hidden');
+                btnLoader.classList.add('hidden');
+                scanBtn.disabled = false;
+            }
+        }
+
+        function renderResults(data) {
+            // 1. Score & Grade
+            const scoreEl = document.getElementById('scoreValue');
+            const gradeEl = document.getElementById('gradeBadge');
+            scoreEl.innerText = data.score;
+            gradeEl.innerText = `Grade: ${data.grade}`;
+            
+            // Colorize Score
+            if (data.score >= 80) {
+                scoreEl.className = 'text-6xl font-bold text-emerald-400';
+                gradeEl.className = 'mt-2 px-4 py-1 rounded-full text-sm font-bold bg-emerald-500/20 text-emerald-400';
+            } else if (data.score >= 50) {
+                scoreEl.className = 'text-6xl font-bold text-amber-400';
+                gradeEl.className = 'mt-2 px-4 py-1 rounded-full text-sm font-bold bg-amber-500/20 text-amber-400';
+            } else {
+                scoreEl.className = 'text-6xl font-bold text-rose-500';
+                gradeEl.className = 'mt-2 px-4 py-1 rounded-full text-sm font-bold bg-rose-500/20 text-rose-500';
+            }
+
+            // 2. Status List (Traffic Light)
+            const statusList = document.getElementById('statusList');
+            statusList.innerHTML = '';
+            const categories = [
+                { label: 'HTTP Security Headers', status: data.headers_status }, // Expected string: 'good', 'warning', 'critical'
+                { label: 'HTTPS Certificate', status: data.https_status },
+                { label: 'DNS Email Security', status: data.dns_status }
+            ];
+
+            categories.forEach(cat => {
+                const dotClass = cat.status === 'good' ? 'dot-green' : (cat.status === 'warning' ? 'dot-yellow' : 'dot-red');
+                statusList.innerHTML += `
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-300">${cat.label}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs uppercase font-bold text-slate-500">${cat.status}</span>
+                            <span class="status-dot ${dotClass}"></span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // 3. Header Details
+            const headerList = document.getElementById('headerList');
+            headerList.innerHTML = '';
+            Object.entries(data.headers).forEach(([key, val]) => {
+                const isOk = val === 'present' || val === 'secure';
+                headerList.innerHTML += `
+                    <li class="flex justify-between items-center">
+                        <span class="text-slate-400">${key}</span>
+                        <span class="${isOk ? 'text-emerald-400' : 'text-rose-400'} font-medium">${val}</span>
+                    </li>
+                `;
+            });
+
+            // 4. Network & DNS Details
+            const networkList = document.getElementById('networkList');
+            networkList.innerHTML = '';
+            const netItems = [
+                { label: 'SSL Valid', val: data.https.valid ? 'Yes' : 'No', ok: data.https.valid },
+                { label: 'SSL Expiry', val: data.https.expiry, ok: true },
+                { label: 'SPF Record', val: data.dns.spf, ok: data.dns.spf === 'present' },
+                { label: 'DMARC Record', val: data.dns.dmarc, ok: data.dns.dmarc === 'present' }
+            ];
+            netItems.forEach(item => {
+                networkList.innerHTML += `
+                    <li class="flex justify-between items-center">
+                        <span class="text-slate-400">${item.label}</span>
+                        <span class="${item.ok ? 'text-emerald-400' : 'text-rose-400'} font-medium">${item.val}</span>
+                    </li>
+                `;
+            });
+
+            // 5. Recommendations
+            const recList = document.getElementById('recommendationList');
+            recList.innerHTML = '';
+            data.recommendations.forEach(rec => {
+                recList.innerHTML += `<li>${rec}</li>`;
+            });
+
+            // 6. JSON
+            document.getElementById('jsonOutput').textContent = JSON.stringify(data, null, 2);
+        }
+
+        function copyJSON() {
+            if (!lastRawResponse) return;
+            navigator.clipboard.writeText(JSON.stringify(lastRawResponse, null, 2));
+            alert('JSON copied to clipboard!');
+        }
+    </script>
+</body>
+</html>
