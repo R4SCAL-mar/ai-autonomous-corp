@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Keamanan Server | Security Recon</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #38bdf8;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: #f1f5f9;
+            scroll-behavior: smooth;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .terminal-font {
+            font-family: 'Fira Code', monospace;
+        }
+
+        .scan-animate {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+
+        .score-ring {
+            transition: stroke-dashoffset 0.5s ease-out;
+        }
+
+        .gradient-text {
+            background: linear-gradient(to right, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .loader {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid var(--accent);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-20">
+
+    <!-- Header/Hero Section -->
+    <header class="pt-16 pb-8 px-4 text-center">
+        <div class="inline-block px-4 py-1.5 mb-4 text-xs font-semibold tracking-widest uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full">
+            Sektor: Server Security Audit
+        </div>
+        <h1 class="text-4xl md:text-6xl font-bold mb-4">Audit <span class="gradient-text">Keamanan Server</span></h1>
+        <p class="text-slate-400 max-w-2xl mx-auto text-lg">
+            Penyaringan teknis dan efektif untuk memastikan keselamatan infrastruktur server dan website Anda dari ancaman siber.
+        </p>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4">
+        
+        <!-- Input Section -->
+        <section class="glass rounded-2xl p-6 md:p-8 mb-12 shadow-2xl">
+            <form id="scanForm" class="flex flex-col md:flex-row gap-4">
+                <div class="flex-grow relative">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <span class="text-slate-500 font-medium">https://</span>
+                    </div>
+                    <input 
+                        type="text" 
+                        id="domainInput" 
+                        required
+                        placeholder="domain-anda.com" 
+                        class="w-full bg-slate-900/50 border border-slate-700 text-white rounded-xl py-4 pl-20 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                    >
+                </div>
+                <button 
+                    type="submit" 
+                    id="scanBtn"
+                    class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-8 rounded-xl transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+                >
+                    <span>Scan Keamanan Sekarang</span>
+                </button>
+            </form>
+        </section>
+
+        <!-- Loading State (Hidden) -->
+        <section id="loadingState" class="hidden text-center py-12">
+            <div class="loader mx-auto mb-4 scale-150"></div>
+            <p class="text-slate-400 terminal-font scan-animate">Initiating reconnaissance sequence...</p>
+            <p class="text-xs text-slate-500 mt-2">Checking Headers, DNS Records, and Vulnerabilities</p>
+        </section>
+
+        <!-- Results Section (Hidden) -->
+        <section id="resultsSection" class="hidden space-y-8">
+            
+            <!-- Top Metrics: Score & Grade -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="glass rounded-2xl p-8 flex items-center justify-around">
+                    <div class="relative h-32 w-32">
+                        <svg class="h-full w-full" viewBox="0 0 100 100">
+                            <circle class="text-slate-800" stroke-width="8" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50"/>
+                            <circle id="scoreCircle" class="text-blue-500 score-ring" stroke-width="8" stroke-dasharray="251.2" stroke-dashoffset="251.2" stroke-linecap="round" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50"/>
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <span id="scoreText" class="text-3xl font-bold">0</span>
+                        </div>
+                    </div>
+                    <div class="text-center md:text-left">
+                        <div class="text-slate-400 text-sm uppercase tracking-wider">Security Grade</div>
+                        <div id="gradeBadge" class="text-6xl font-black mt-1 text-emerald-400">A</div>
+                    </div>
+                </div>
+
+                <div class="glass rounded-2xl p-8">
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase mb-4">DNS & Email Security</h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-300">SPF Record</span>
+                            <span id="spfStatus" class="px-3 py-1 rounded-full text-xs font-bold">---</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-300">DMARC Policy</span>
+                            <span id="dmarcStatus" class="px-3 py-1 rounded-full text-xs font-bold">---</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Headers Table -->
+            <div class="glass rounded-2xl overflow-hidden">
+                <div class="p-6 border-b border-slate-700">
+                    <h3 class="font-bold text-lg">HTTP Security Headers</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-800/50 text-slate-400 text-xs uppercase">
+                            <tr>
+                                <th class="px-6 py-4">Header Name</th>
+                                <th class="px-6 py-4">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="headersTableBody" class="divide-y divide-slate-700">
+                            <!-- Rows injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Recommendations -->
+            <div class="glass rounded-2xl p-8">
+                <h3 class="font-bold text-lg mb-6 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Critical Recommendations
+                </h3>
+                <ul id="recommendationsList" class="space-y-4 text-slate-300">
+                    <!-- List items injected by JS -->
+                </ul>
+            </div>
+
+            <!-- Pricing / Payment CTA -->
+            <div class="pt-8 text-center">
+                <h2 class="text-2xl font-bold mb-2">Butuh Laporan Lengkap & Audit Mendalam?</h2>
+                <p class="text-slate-400 mb-8">Dapatkan seluruh detail teknis, daftar celah keamanan, dan panduan perbaikan langkah-demi-langkah.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                    <a href="https://maco24.gumroad.com" class="bg-white text-slate-950 font-bold py-4 px-6 rounded-xl hover:bg-slate-200 transition-all flex flex-col items-center">
+                        <span class="text-sm opacity-70">Akses Pro / Full Audit Report</span>
+                        <span class="text-xl">$32 USD</span>
+                    </a>
+                    <a href="https://lynk.id/r4scal" class="bg-blue-600 text-white font-bold py-4 px-6 rounded-xl hover:bg-blue-500 transition-all flex flex-col items-center">
+                        <span class="text-sm opacity-80">Bayar QRIS / E-Wallet</span>
+                        <span class="text-xl">Rp 450.000</span>
+                    </a>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Error Message (Hidden) -->
+        <div id="errorState" class="hidden glass border-red-500/50 rounded-2xl p-6 text-center text-red-400">
+            Error performing scan. Please check the domain or try again later.
+        </div>
+
+    </main>
+
+    <footer class="mt-20 text-center text-slate-500 text-sm">
+        <p>&copy; 2024 Security Recon Pro. All rights reserved.</p>
+        <a href="/index.html" class="inline-block mt-4 hover:text-white transition-colors underline decoration-slate-700">Kembali ke Beranda</a>
+    </footer>
+
+    <script>
+        const scanForm = document.getElementById('scanForm');
+        const domainInput = document.getElementById('domainInput');
+        const scanBtn = document.getElementById('scanBtn');
+        const loadingState = document.getElementById('loadingState');
+        const resultsSection = document.getElementById('resultsSection');
+        const errorState = document.getElementById('errorState');
+
+        // Elements for injecting data
+        const scoreText = document.getElementById('scoreText');
+        const scoreCircle = document.getElementById('scoreCircle');
+        const gradeBadge = document.getElementById('gradeBadge');
+        const spfStatus = document.getElementById('spfStatus');
+        const dmarcStatus = document.getElementById('dmarcStatus');
+        const headersTableBody = document.getElementById('headersTableBody');
+        const recommendationsList = document.getElementById('recommendationsList');
+
+        scanForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const domain = domainInput.value.trim();
+            
+            // UI Reset
+            errorState.classList.add('hidden');
+            resultsSection.classList.add('hidden');
+            loadingState.classList.remove('hidden');
+            scanBtn.disabled = true;
+            scanBtn.classList.add('opacity-50');
+
+            try {
+                const response = await fetch('/.netlify/functions/security-recon', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domain })
+                });
+
+                if (!response.ok) throw new Error('Server error');
+
+                const data = await response.json();
+                renderResults(data);
+
+            } catch (err) {
+                console.error(err);
+                errorState.classList.remove('hidden');
+            } finally {
+                loadingState.classList.add('hidden');
+                scanBtn.disabled = false;
+                scanBtn.classList.remove('opacity-50');
+            }
+        });
+
+        function renderResults(data) {
+            // 1. Score & Grade
+            scoreText.innerText = data.score;
+            const circumference = 2 * Math.PI * 40;
+            const offset = circumference - (data.score / 100) * circumference;
+            scoreCircle.style.strokeDashoffset = offset;
+            
+            gradeBadge.innerText = data.grade;
+            const gradeColors = { 'A': 'text-emerald-400', 'B': 'text-blue-400', 'C': 'text-yellow-400', 'D': 'text-orange-400', 'F': 'text-red-500' };
+            gradeBadge.className = `text-6xl font-black mt-1 ${gradeColors[data.grade] || 'text-white'}`;
+
+            // 2. DNS Status
+            updateStatusBadge(spfStatus, data.dns.spf);
+            updateStatusBadge(dmarcStatus, data.dns.dmarc);
+
+            // 3. Headers Table
+            headersTableBody.innerHTML = '';
+            data.headers.forEach(header => {
+                const row = document.createElement('tr');
+                const statusClass = header.status === 'pass' ? 'text-emerald-400' : 'text-red-400';
+                const statusText = header.status === 'pass' ? '✓ Pass' : '✗ Missing/Fail';
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-slate-200">${header.name}</td>
+                    <td class="px-6 py-4 font-bold ${statusClass}">${statusText}</td>
+                `;
+                headersTableBody.appendChild(row);
+            });
+
+            // 4. Recommendations
+            recommendationsList.innerHTML = '';
+            data.recommendations.forEach(rec => {
+                const li = document.createElement('li');
+                li.className = 'flex items-start gap-3';
+                li.innerHTML = `
+                    <span class="text-blue-400 mt-1">▹</span>
+                    <span>${rec}</span>
+                `;
+                recommendationsList.appendChild(li);
+            });
+
+            // Show Results
+            resultsSection.classList.remove('hidden');
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function updateStatusBadge(el, status) {
+            el.innerText = status.toUpperCase();
+            if (status === 'pass') {
+                el.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400';
+            } else {
+                el.className = 'px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400';
+            }
+        }
+    </script>
+</body>
+</html>
