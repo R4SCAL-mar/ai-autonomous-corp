@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Recon Scan</title>
+  <style>
+    :root {
+      --bg:#121212;
+      --bg-card:#1e1e1e;
+      --text:#e0e0e0;
+      --accent:#4caf50;
+      --danger:#f44336;
+      --warning:#ff9800;
+      --font:"Helvetica Neue",Helvetica,Arial,sans-serif;
+    }
+    @media (prefers-color-scheme: light) {
+      :root{
+        --bg:#fafafa;
+        --bg-card:#fff;
+        --text:#212121;
+        --accent:#388e3c;
+        --danger:#d32f2f;
+        --warning:#f57c00;
+      }
+    }
+    body{
+      margin:0;
+      font-family:var(--font);
+      background:var(--bg);
+      color:var(--text);
+      line-height:1.6;
+    }
+    .container{
+      max-width:960px;
+      margin:auto;
+      padding:1rem;
+    }
+    h1{
+      text-align:center;
+      margin-bottom:1rem;
+    }
+    .card{
+      background:var(--bg-card);
+      border-radius:8px;
+      padding:1.5rem;
+      margin-bottom:1.5rem;
+      box-shadow:0 2px 4px rgba(0,0,0,0.3);
+    }
+    .form-group{
+      display:flex;
+      flex-direction:column;
+      gap:0.5rem;
+    }
+    input[type=text]{
+      padding:0.75rem;
+      border:none;
+      border-radius:4px;
+      font-size:1rem;
+    }
+    button{
+      cursor:pointer;
+      padding:0.75rem 1.5rem;
+      border:none;
+      border-radius:4px;
+      font-size:1rem;
+      background:var(--accent);
+      color:#fff;
+      transition:background .2s;
+    }
+    button:hover{
+      background:#45a049;
+    }
+    .result-section{
+      display:none;
+      gap:1rem;
+      flex-direction:column;
+    }
+    .status{
+      display:flex;
+      align-items:center;
+      gap:0.5rem;
+    }
+    .status span{
+      font-weight:bold;
+    }
+    .status.pass{color:var(--accent);}
+    .status.fail{color:var(--danger);}
+    .recommendations{
+      list-style:disc inside;
+      margin-top:0.5rem;
+    }
+    .offers{
+      display:flex;
+      flex-wrap:wrap;
+      gap:1rem;
+      justify-content:center;
+    }
+    .offers a{
+      text-decoration:none;
+    }
+    .offers button{
+      background:#2196f3;
+    }
+    .offers button:hover{
+      background:#1976d2;
+    }
+    @media (max-width:600px){
+      .form-group{
+        flex-direction:column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Security Recon Scan</h1>
+
+    <div class="card">
+      <div class="form-group">
+        <label for="domain">Masukkan Domain</label>
+        <input type="text" id="domain" placeholder="example.com" autocomplete="off">
+        <button id="scanBtn">Scan Keamanan Sekarang</button>
+      </div>
+    </div>
+
+    <div id="resultCard" class="card result-section">
+      <h2>Hasil Scan</h2>
+      <div class="status" id="gradeStatus"><span>Grade:</span> <span id="grade"></span></div>
+      <div class="status" id="scoreStatus"><span>Skor:</span> <span id="score"></span></div>
+
+      <h3>Security Headers</h3>
+      <ul id="headersList"></ul>
+
+      <h3>DNS SPF / DMARC</h3>
+      <ul id="dnsList"></ul>
+
+      <h3>Rekomendasi Perbaikan</h3>
+      <ul class="recommendations" id="recommendations"></ul>
+    </div>
+
+    <div class="card offers">
+      <a href="https://maco24.gumroad.com" target="_blank">
+        <button>Akses Pro / Full Audit Report (USD)</button>
+      </a>
+      <a href="https://lynk.id/r4scal" target="_blank">
+        <button>Bayar QRIS / E-Wallet (IDR)</button>
+      </a>
+      <a href="/index.html">
+        <button>Kembali ke Beranda</button>
+      </a>
+    </div>
+  </div>
+
+  <script>
+    const scanBtn = document.getElementById('scanBtn');
+    const domainInput = document.getElementById('domain');
+    const resultCard = document.getElementById('resultCard');
+    const gradeEl = document.getElementById('grade');
+    const scoreEl = document.getElementById('score');
+    const headersList = document.getElementById('headersList');
+    const dnsList = document.getElementById('dnsList');
+    const recList = document.getElementById('recommendations');
+
+    scanBtn.addEventListener('click', async () => {
+      const domain = domainInput.value.trim();
+      if (!domain) {
+        alert('Masukkan domain yang valid.');
+        return;
+      }
+
+      // Reset UI
+      headersList.innerHTML = '';
+      dnsList.innerHTML = '';
+      recList.innerHTML = '';
+      gradeEl.textContent = '';
+      scoreEl.textContent = '';
+      resultCard.style.display = 'none';
+
+      try {
+        const response = await fetch('/.netlify/functions/security-recon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ domain })
+        });
+
+        if (!response.ok) throw new Error('Network response was not ok');
+
+        const data = await response.json();
+
+        // Expected data structure:
+        // { score: number, grade: string, headers: {headerName: boolean}, dns: {spf: boolean, dmarc: boolean}, recommendations: [string] }
+
+        gradeEl.textContent = data.grade || 'N/A';
+        scoreEl.textContent = data.score !== undefined ? data.score : 'N/A';
+
+        // Security headers
+        if (data.headers && typeof data.headers === 'object') {
+          for (const [name, ok] of Object.entries(data.headers)) {
+            const li = document.createElement('li');
+            li.className = 'status ' + (ok ? 'pass' : 'fail');
+            li.innerHTML = `<span>${name}:</span> ${ok ? '✅ Aktif' : '❌ Tidak Aktif'}`;
+            headersList.appendChild(li);
+          }
+        }
+
+        // DNS SPF/DMARC
+        if (data.dns && typeof data.dns === 'object') {
+          const spfLi = document.createElement('li');
+          spfLi.className = 'status ' + (data.dns.spf ? 'pass' : 'fail');
+          spfLi.innerHTML = `<span>SPF:</span> ${data.dns.spf ? '✅ Ditemukan' : '❌ Tidak Ditemukan'}`;
+          dnsList.appendChild(spfLi);
+
+          const dmarcLi = document.createElement('li');
+          dmarcLi.className = 'status ' + (data.dns.dmarc ? 'pass' : 'fail');
+          dmarcLi.innerHTML = `<span>DMARC:</span> ${data.dns.dmarc ? '✅ Ditemukan' : '❌ Tidak Ditemukan'}`;
+          dnsList.appendChild(dmarcLi);
+        }
+
+        // Recommendations
+        if (Array.isArray(data.recommendations)) {
+          data.recommendations.forEach(rec => {
+            const li = document.createElement('li');
+            li.textContent = rec;
+            recList.appendChild(li);
+          });
+        }
+
+        resultCard.style.display = 'flex';
+      } catch (err) {
+        console.error(err);
+        alert('Terjadi kesalahan saat memproses scan. Silakan coba lagi.');
+      }
+    });
+  </script>
+</body>
+</html>
