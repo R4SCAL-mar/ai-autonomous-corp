@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Core Web Vitals & SEO Health Monitor</title>
+  <style>
+    :root {
+      --bg:#121212;
+      --surface:#1e1e1e;
+      --text:#e0e0e0;
+      --primary:#0d6efd;
+      --success:#28a745;
+      --danger:#dc3545;
+      --warning:#ffc107;
+      --radius:8px;
+      --gap:1rem;
+    }
+    @media (prefers-color-scheme: light) {
+      :root{
+        --bg:#f5f5f5;
+        --surface:#ffffff;
+        --text:#212529;
+      }
+    }
+    body{
+      margin:0;
+      font-family:system-ui,Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      display:flex;
+      flex-direction:column;
+      min-height:100vh;
+    }
+    header, main, footer{
+      max-width:900px;
+      margin:auto;
+      width:90%;
+    }
+    header{
+      padding: var(--gap) 0;
+      text-align:center;
+    }
+    h1{
+      margin:0;
+      font-size:1.8rem;
+    }
+    .card{
+      background:var(--surface);
+      border-radius:var(--radius);
+      padding:var(--gap);
+      margin-bottom:var(--gap);
+      box-shadow:0 2px 6px rgba(0,0,0,0.2);
+    }
+    .form-group{
+      display:flex;
+      flex-direction:column;
+      gap:0.5rem;
+    }
+    input[type="text"]{
+      padding:0.6rem;
+      border:none;
+      border-radius:var(--radius);
+      background:#2c2c2c;
+      color:var(--text);
+    }
+    button{
+      cursor:pointer;
+      padding:0.6rem 1rem;
+      border:none;
+      border-radius:var(--radius);
+      background:var(--primary);
+      color:#fff;
+      font-weight:600;
+    }
+    button:hover{
+      opacity:0.9;
+    }
+    .result-section{
+      display:none;
+      gap:var(--gap);
+      flex-direction:column;
+    }
+    .status{
+      display:flex;
+      align-items:center;
+      gap:0.5rem;
+    }
+    .status.pass{color:var(--success);}
+    .status.fail{color:var(--danger);}
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+      gap:var(--gap);
+    }
+    .payment-btn{
+      background:#28a745;
+      text-align:center;
+      text-decoration:none;
+      color:#fff;
+      padding:0.8rem;
+      border-radius:var(--radius);
+      font-weight:600;
+    }
+    .payment-btn:nth-child(2){background:#ff5722;}
+    a.back-link{
+      color:var(--primary);
+      text-decoration:none;
+    }
+    @media(max-width:600px){
+      h1{font-size:1.5rem;}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Core Web Vitals & SEO Health Monitor</h1>
+  </header>
+
+  <main>
+    <section class="card">
+      <form id="scanForm">
+        <div class="form-group">
+          <label for="domain">Masukkan Domain (contoh: example.com)</label>
+          <input type="text" id="domain" name="domain" placeholder="domain.com" required>
+        </div>
+        <button type="submit">Scan Keamanan Sekarang</button>
+      </form>
+    </section>
+
+    <section class="card result-section" id="resultSection">
+      <h2>Hasil Analisis Keamanan</h2>
+      <div class="grid">
+        <div>
+          <strong>Score:</strong> <span id="score">-</span>/100
+        </div>
+        <div>
+          <strong>Grade:</strong> <span id="grade">-</span>
+        </div>
+      </div>
+
+      <h3>Status Header Keamanan</h3>
+      <div id="headerStatus"></div>
+
+      <h3>Status DNS</h3>
+      <div id="dnsStatus"></div>
+
+      <h3>Rekomendasi Perbaikan</h3>
+      <ul id="recommendations"></ul>
+    </section>
+
+    <section class="card">
+      <h2>Penawaran Pro</h2>
+      <p>Dapatkan laporan audit lengkap dan dashboard pro.</p>
+      <a href="https://maco24.gumroad.com" class="payment-btn" target="_blank">Akses Pro / Full Audit Report (USD)</a>
+      <a href="https://lynk.id/r4scal" class="payment-btn" target="_blank">Bayar QRIS / E-Wallet (IDR)</a>
+    </section>
+
+    <p><a href="/index.html" class="back-link">← Kembali ke Beranda</a></p>
+  </main>
+
+  <footer class="card">
+    <p>&copy; 2026 Core Web Vitals & SEO Health Monitor</p>
+  </footer>
+
+  <script>
+    const form = document.getElementById('scanForm');
+    const resultSection = document.getElementById('resultSection');
+    const scoreEl = document.getElementById('score');
+    const gradeEl = document.getElementById('grade');
+    const headerStatusEl = document.getElementById('headerStatus');
+    const dnsStatusEl = document.getElementById('dnsStatus');
+    const recommendationsEl = document.getElementById('recommendations');
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const domain = document.getElementById('domain').value.trim();
+      if (!domain) return;
+
+      // Reset UI
+      resultSection.style.display = 'none';
+      headerStatusEl.innerHTML = '';
+      dnsStatusEl.innerHTML = '';
+      recommendationsEl.innerHTML = '';
+
+      try {
+        const resp = await fetch('/.netlify/functions/security-recon', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({domain})
+        });
+
+        if (!resp.ok) throw new Error('Network response was not ok');
+        const data = await resp.json();
+
+        // Populate results
+        scoreEl.textContent = data.score ?? '-';
+        gradeEl.textContent = data.grade ?? '-';
+
+        // Headers
+        const headers = data.headers || {};
+        for (const [name, ok] of Object.entries(headers)) {
+          const div = document.createElement('div');
+          div.className = 'status ' + (ok ? 'pass' : 'fail');
+          div.textContent = `${name}: ${ok ? 'Present' : 'Missing'}`;
+          headerStatusEl.appendChild(div);
+        }
+
+        // DNS
+        const dns = data.dns || {};
+        for (const [name, ok] of Object.entries(dns)) {
+          const div = document.createElement('div');
+          div.className = 'status ' + (ok ? 'pass' : 'fail');
+          div.textContent = `${name}: ${ok ? 'Configured' : 'Not Configured'}`;
+          dnsStatusEl.appendChild(div);
+        }
+
+        // Recommendations
+        (data.recommendations || []).forEach(rec => {
+          const li = document.createElement('li');
+          li.textContent = rec;
+          recommendationsEl.appendChild(li);
+        });
+
+        resultSection.style.display = 'flex';
+      } catch (err) {
+        alert('Terjadi kesalahan: ' + err.message);
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 {
   "companyName": "Autonomous Digital Holdings",
-  "lastUpdated": "2026-11-27T02:18:27.541Z",
+  "lastUpdated": "2026-11-28T02:13:56.119Z",
   "finance": {
     "currency": "IDR",
     "initialCapital": 0,
@@ -12,7 +12,7 @@
       "quantTrading": 0,
       "trafficArbitrage": 0
     },
-    "isMonthEndLocked": false
+    "isMonthEndLocked": true
   },
   "activeVentures": [
     {
@@ -95,9 +95,23 @@
       "market": "Global (USD) / Indonesia (IDR)",
       "price": "Harga jual (misal: $24 atau Rp 350.000)",
       "promo": "4 sementara konten lengkap dan inovatif"
+    },
+    {
+      "date": "2026-11-28",
+      "sector": "SEO/Performance Analyzer",
+      "title": "Core Web Vitals & SEO Health Monitor",
+      "url": "/tools/seo-performance-core-audit.html",
+      "market": "Global (USD) / Indonesia (IDR)",
+      "price": "Rp 0 (Free Tier) / $19.99 (Pro Dashboard)",
+      "promo": "Kecepatan dan visibilitas adalah mata uang digital baru. Core Web Vitals & SEO Health Monitor kami menggabungkan analisis kinerja halaman real-time dengan validasi keamanan teknis untuk memastikan situs Anda tidak hanya cepat, tetapi juga aman dan terindeks dengan baik. Dengan mengintegrasikan endpoint backend aktif untuk memeriksa status HTTPS dan header keamanan yang berdampak pada skor kepercayaan mesin pencari, alat ini memberikan indeks kesehatan holistik dari Rp 0. Optimalkan pengalaman pengguna dan peringkat pencarian Anda secara instan tanpa biaya operasional tambahan."
     }
   ],
   "weeklyLogs": [
+    {
+      "timestamp": "2026-11-28T02:13:56.119Z",
+      "summary": "[SEO/Performance Analyzer] Merilis \"Core Web Vitals & SEO Health Monitor\" (Rp 0 (Free Tier) / $19.99 (Pro Dashboard))",
+      "treasuryStatus": "Mode Pengamanan Akhir Bulan (Tgl 28-31): Dana dikunci di Safe Yield menjelang Tgl 1."
+    },
     {
       "timestamp": "2026-11-27T02:18:27.541Z",
       "summary": "[Server Security Audit] Merilis \"Audit Perangkatan Kualitas Server\" (Harga jual (misal: $24 atau Rp 350.000))",
